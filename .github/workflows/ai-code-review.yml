@@ -1,11 +1,11 @@
-name: AI Code Review
+const content = `name: AI Code Review
 on: [push, pull_request]
 
 jobs:
   review:
     runs-on: ubuntu-latest
     outputs:
-      approved: ${{ steps.review.outputs.approved }}
+      approved: \${{ steps.review.outputs.approved }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -15,7 +15,7 @@ jobs:
         id: review
         run: |
           # Get the diff safely
-          if [ "${{ github.event_name }}" = "push" ]; then
+          if [ "\${{ github.event_name }}" = "push" ]; then
             DIFF=$(git diff HEAD~1 2>/dev/null || git show --format= --name-only)
           else
             DIFF=$(git diff HEAD~1 2>/dev/null || git show --format= --name-only)
@@ -26,8 +26,10 @@ jobs:
             # Escape newlines and quotes for JSON
             SAFE_DIFF=$(echo "$DIFF" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
 
-            # Submit for review
-            RESPONSE=$(curl -s -X POST "http://84.247.166.227:3000/pre-commit-review"               -H "Content-Type: application/json"               -d "{"diff": $SAFE_DIFF, "repoUrl": "https://github.com/${{ github.repository }}"}")
+            # Submit for review (ensure valid JSON)
+            RESPONSE=$(curl -s -X POST "http://84.247.166.227:3000/pre-commit-review" \
+              -H "Content-Type: application/json" \
+              -d "{\"diff\": $SAFE_DIFF, \"repoUrl\": \"https://github.com/\${{ github.repository }}\"}")
 
             if [ $? -ne 0 ]; then
               echo "❌ Failed to submit for review"
@@ -38,7 +40,7 @@ jobs:
             echo "⏳ Review submitted. Waiting for approval..."
             echo "📋 Check your dashboard at http://localhost:5173 to approve or reject the changes"
 
-            # Wait for approval by polling with GET requests
+            # Wait for approval by polling GET request using RESTful route
             APPROVED=false
             MAX_WAIT=300  # 5 minutes max wait
             WAIT_COUNT=0
@@ -49,8 +51,8 @@ jobs:
 
               echo "Still waiting for approval... ($WAIT_COUNT seconds elapsed)"
 
-              # ✅ Fixed: Use GET request to check approval status
-              APPROVAL_STATUS=$(curl -s "http://84.247.166.227:3000/check-approval${{ github.repository }}")
+              # ✅ Corrected GET request for /check-approval/:owner/:repo
+              APPROVAL_STATUS=$(curl -s "http://84.247.166.227:3000/check-approval/\${{ github.repository }}")
               echo "Approval status check: $APPROVAL_STATUS"
 
               if echo "$APPROVAL_STATUS" | grep -q '"approved":true'; then
@@ -71,7 +73,7 @@ jobs:
             echo "approved=true" >> $GITHUB_OUTPUT
           fi
         env:
-          API_KEY: ${{ secrets.AI_REVIEW_API_KEY }}
+          API_KEY: \${{ secrets.AI_REVIEW_API_KEY }}
 
   push-changes:
     needs: review
@@ -82,4 +84,4 @@ jobs:
         run: |
           echo "✅ Changes approved! Pushing to repository..."
           # The actual push happens here when approved
-
+`;
